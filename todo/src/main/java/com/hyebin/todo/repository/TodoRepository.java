@@ -15,4 +15,6 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
     List<Todo> findByTag_Id(Long tagId);
     List<Todo> findByStatus(Status status);
     List<Todo> findByPriority(Priority priority);
+
+    long countByStatus(Status status);
 }
