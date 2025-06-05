@@ -21,6 +21,9 @@ public class TodoService {
 
     // 할 일 등록
     public Todo createTodo(Todo todo) {
+        if (todo.getDueDate() == null) {
+            todo.setDueDate(LocalDateTime.now());
+        }
         return todoRepository.save(todo);
     }
 
