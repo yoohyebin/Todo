@@ -143,6 +143,60 @@
   </div>
 </div>
 
+<!-- 할일 수정 모달 -->
+<div class="todo-modal" id="editTodoModal" onclick="closeEditTodoModal(event)">
+  <div class="todo-modal-content" onclick="event.stopPropagation()">
+    <div class="todo-modal-header">
+      <div class="todo-modal-title">할일 수정</div>
+      <button class="todo-modal-close" onclick="closeEditTodoModal()">&times;</button>
+    </div>
+
+    <div class="todo-modal-body">
+      <div class="form-group">
+        <label for="editTodoTitle">제목</label>
+        <input type="text" id="editTodoTitle" placeholder="할 일 제목을 입력하세요" required>
+      </div>
+
+      <div class="form-group">
+        <label for="editTodoDescription">설명</label>
+        <textarea id="editTodoDescription" placeholder="할 일 설명을 입력하세요 (선택사항)"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="editTodoDate">날짜</label>
+          <input type="date" id="editTodoDate" required>
+        </div>
+        <div class="form-group">
+          <label for="editTodoTime">시간</label>
+          <input type="time" id="editTodoTime">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="editTodoPriority">우선순위</label>
+        <select id="editTodoPriority">
+          <option value="LOW">낮음</option>
+          <option value="MEDIUM">중간</option>
+          <option value="HIGH">높음</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>태그 선택</label>
+        <div class="tag-selector" id="editModalTagSelector">
+          <!-- 태그 목록이 동적으로 생성됩니다 -->
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeEditTodoModal()">취소</button>
+        <button class="btn btn-primary" onclick="updateTodo()">수정</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

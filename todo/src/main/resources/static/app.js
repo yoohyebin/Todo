@@ -5,6 +5,7 @@ let currentSearch = '';
 let currentTagId = null;
 let allTodos = [];
 let allTags = [];
+let editingTodoId = null;
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -47,6 +48,7 @@ async function loadTags() {
         console.log('로딩된 태그들:', allTags); // 디버깅용
         renderSidebarTags();
         renderModalTags();
+        renderEditModalTags();
     } catch (error) {
         console.error('태그 로딩 실패:', error);
     }
@@ -89,6 +91,24 @@ function renderModalTags() {
     console.log('모달 태그 렌더링 완료:', allTags.length, '개'); // 디버깅용
 }
 
+function renderEditModalTags() {
+    const tagSelector = document.getElementById('editModalTagSelector');
+    tagSelector.innerHTML = '';
+
+    allTags.forEach(tag => {
+        const tagElement = document.createElement('div');
+        tagElement.className = 'tag-option';
+        tagElement.style.backgroundColor = tag.color;
+        tagElement.textContent = tag.name;
+        tagElement.setAttribute('data-tag-id', tag.id);
+        tagElement.onclick = () => {
+            console.log('수정 모달 태그 클릭됨:', tag.id, tag.name);
+            selectEditTag(tag.id);
+        };
+        tagSelector.appendChild(tagElement);
+    });
+}
+
 function selectTag(tagId) {
     // 모달 내의 모든 태그 선택 해제
     const modalTagSelector = document.getElementById('modalTagSelector');
@@ -103,6 +123,23 @@ function selectTag(tagId) {
         console.log('태그 선택됨:', tagId); // 디버깅용
     } else {
         console.error('태그를 찾을 수 없음:', tagId); // 디버깅용
+    }
+}
+
+function selectEditTag(tagId) {
+    // 수정 모달 내의 모든 태그 선택 해제
+    const editModalTagSelector = document.getElementById('editModalTagSelector');
+    editModalTagSelector.querySelectorAll('.tag-option').forEach(el => {
+        el.classList.remove('selected');
+    });
+
+    // 선택된 태그 표시
+    const selectedTag = editModalTagSelector.querySelector(`[data-tag-id="${tagId}"]`);
+    if (selectedTag) {
+        selectedTag.classList.add('selected');
+        console.log('수정 모달 태그 선택됨:', tagId);
+    } else {
+        console.error('수정 모달에서 태그를 찾을 수 없음:', tagId);
     }
 }
 
@@ -352,6 +389,22 @@ function closeAddTodoModal(event) {
     document.getElementById('addTodoModal').classList.remove('active');
 }
 
+function openEditTodoModal(todoId) {
+    editingTodoId = todoId;
+    document.getElementById('editTodoModal').classList.add('active');
+    clearEditModalForm();
+    renderEditModalTags();
+    loadTodoForEdit(todoId);
+}
+
+function closeEditTodoModal(event) {
+    if (event && event.target !== event.currentTarget) {
+        return;
+    }
+    document.getElementById('editTodoModal').classList.remove('active');
+    editingTodoId = null;
+}
+
 function clearModalForm() {
     document.getElementById('todoTitle').value = '';
     document.getElementById('todoDescription').value = '';
@@ -360,6 +413,18 @@ function clearModalForm() {
     // 모달 내 태그 선택 해제
     const modalTagSelector = document.getElementById('modalTagSelector');
     modalTagSelector.querySelectorAll('.tag-option').forEach(el => {
+        el.classList.remove('selected');
+    });
+}
+
+function clearEditModalForm() {
+    document.getElementById('editTodoTitle').value = '';
+    document.getElementById('editTodoDescription').value = '';
+    document.getElementById('editTodoPriority').value = 'MEDIUM';
+
+    // 수정 모달 내 태그 선택 해제
+    const editModalTagSelector = document.getElementById('editModalTagSelector');
+    editModalTagSelector.querySelectorAll('.tag-option').forEach(el => {
         el.classList.remove('selected');
     });
 }
@@ -436,8 +501,102 @@ function openTagManager() {
 
 // ===== 할일 수정 (기본 구현) =====
 function editTodo(todoId) {
-    alert('할일 수정 기능은 준비 중입니다.');
-    // TODO: 할일 수정 모달 구현
+    openEditTodoModal(todoId);
+}
+
+async function loadTodoForEdit(todoId) {
+    try {
+        const todo = await apiCall(`/todos/${todoId}`);
+        const todoData = todo.data || todo;
+
+        // 폼에 기존 데이터 채우기
+        document.getElementById('editTodoTitle').value = todoData.title;
+        document.getElementById('editTodoDescription').value = todoData.content || '';
+        document.getElementById('editTodoPriority').value = todoData.priority;
+
+        // 날짜와 시간 분리
+        const dueDate = new Date(todoData.dueDate);
+        const dateStr = dueDate.toISOString().split('T')[0];
+        const timeStr = dueDate.toTimeString().slice(0, 5);
+
+        document.getElementById('editTodoDate').value = dateStr;
+        document.getElementById('editTodoTime').value = timeStr;
+
+        // 기존 태그 선택
+        if (todoData.tagId) {
+            selectEditTag(todoData.tagId);
+        } else {
+            // tagId가 없다면 태그명으로 찾기
+            const tag = allTags.find(t => t.name === todoData.tagName);
+            if (tag) {
+                selectEditTag(tag.id);
+            }
+        }
+
+        console.log('수정용 데이터 로드 완료:', todoData);
+    } catch (error) {
+        console.error('할일 데이터 로드 실패:', error);
+        showError('할일 데이터를 불러오는데 실패했습니다.');
+    }
+}
+
+async function updateTodo() {
+    if (!editingTodoId) {
+        showError('수정할 할일을 찾을 수 없습니다.');
+        return;
+    }
+
+    const title = document.getElementById('editTodoTitle').value.trim();
+    const content = document.getElementById('editTodoDescription').value.trim();
+    const date = document.getElementById('editTodoDate').value;
+    const time = document.getElementById('editTodoTime').value;
+    const priority = document.getElementById('editTodoPriority').value;
+
+    // 수정 모달에서 선택된 태그 찾기
+    const editModalTagSelector = document.getElementById('editModalTagSelector');
+    const selectedTag = editModalTagSelector.querySelector('.tag-option.selected');
+
+    if (!title) {
+        alert('제목을 입력해주세요.');
+        return;
+    }
+
+    if (!date) {
+        alert('날짜를 선택해주세요.');
+        return;
+    }
+
+    if (!selectedTag) {
+        alert('태그를 선택해주세요.');
+        return;
+    }
+
+    const tagId = parseInt(selectedTag.getAttribute('data-tag-id'));
+    const dueDate = `${date}T${time}:00`;
+
+    const todoData = {
+        title: title,
+        content: content,
+        dueDate: dueDate,
+        priority: priority,
+        tagId: tagId
+    };
+
+    console.log('수정할 데이터:', todoData);
+
+    try {
+        await apiCall(`/todos/${editingTodoId}`, {
+            method: 'PUT',
+            body: JSON.stringify(todoData)
+        });
+
+        closeEditTodoModal();
+        loadCurrentView();
+        showSuccess('할일이 성공적으로 수정되었습니다!');
+    } catch (error) {
+        console.error('할일 수정 실패:', error);
+        showError('할일 수정에 실패했습니다.');
+    }
 }
 
 // ===== 알림 함수들 =====
@@ -454,6 +613,7 @@ function showError(message) {
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeAddTodoModal();
+        closeEditTodoModal();
     }
 });
 
@@ -461,5 +621,11 @@ document.addEventListener('keydown', function(event) {
 document.getElementById('addTodoModal').addEventListener('click', function(event) {
     if (event.target === this) {
         closeAddTodoModal();
+    }
+});
+
+document.getElementById('editTodoModal').addEventListener('click', function(event) {
+    if (event.target === this) {
+        closeEditTodoModal();
     }
 });
