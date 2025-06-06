@@ -43,6 +43,10 @@ public class TodoController {
                 dto.getDueDate(),
                 tag
         );
+
+        if (dto.getStatus() != null) todo.setStatus(dto.getStatus());
+        if (dto.getPriority() != null) todo.setPriority(dto.getPriority());
+
         Todo saved = todoService.createTodo(todo);
         return ResponseEntity.ok(toDto(saved));
     }
@@ -53,13 +57,19 @@ public class TodoController {
             @RequestParam(required = false) String status,      // 상태 필터
             @RequestParam(required = false) String priority,    // 우선순위 필터
             @RequestParam(required = false) String search,      // 검색 키워드
-            @RequestParam(required = false) String sort         // 정렬 방식
+            @RequestParam(required = false) String sort,         // 정렬 방식
+            @RequestParam(required = false) Long tagId
     ) {
         List<Todo> todos;
 
         // 검색
         if (search != null && !search.trim().isEmpty()) {
             todos = todoService.searchTodosByTitle(search);
+        }
+
+        // 태그별 필터링
+        else if (tagId != null) {
+            todos = todoService.getTodosByTag(tagId);
         }
 
         // 상태별 필터링
