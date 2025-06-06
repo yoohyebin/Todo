@@ -159,16 +159,70 @@ async function loadTodos(params = {}) {
         if (params.status) queryParams.append('status', params.status);
         if (params.priority) queryParams.append('priority', params.priority);
         if (params.search) queryParams.append('search', params.search);
-        if (params.sort) queryParams.append('sort', params.sort);
         if (params.tagId) queryParams.append('tagId', params.tagId);
 
         const url = `/todos${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
         const todos = await apiCall(url);
         allTodos = Array.isArray(todos) ? todos : (todos.data || []);
+
+        if (params.sort) {
+            allTodos = sortTodos(allTodos, params.sort);
+        }
+
         renderTodos();
     } catch (error) {
         console.error('할일 로딩 실패:', error);
         showError('할일을 불러오는데 실패했습니다.');
+    }
+}
+
+function sortTodos(todos, sortType) {
+    if (!todos || !Array.isArray(todos)) return [];
+
+    const sortedTodos = [...todos]; // 원본 배열 보존
+
+    switch (sortType) {
+        case 'dueDate':
+            return sortedTodos.sort((a, b) => {
+                const dateA = new Date(a.dueDate);
+                const dateB = new Date(b.dueDate);
+                return dateA - dateB; // 오름차순 (가까운 날짜부터)
+            });
+
+        case 'created':
+            return sortedTodos.sort((a, b) => {
+                const dateA = new Date(a.createdAt || a.dueDate);
+                const dateB = new Date(b.createdAt || b.dueDate);
+                return dateB - dateA; // 내림차순 (최신부터)
+            });
+
+        case 'priority':
+            return sortedTodos.sort((a, b) => {
+                const priorityOrder = { 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3 };
+                const priorityA = priorityOrder[a.priority] || 2;
+                const priorityB = priorityOrder[b.priority] || 2;
+
+                if (priorityA !== priorityB) {
+                    return priorityA - priorityB; // 높은 우선순위부터
+                }
+                // 같은 우선순위면 마감일순
+                return new Date(a.dueDate) - new Date(b.dueDate);
+            });
+
+        case 'title':
+            return sortedTodos.sort((a, b) => {
+                const titleA = a.title ? String(a.title).trim() : '';
+                const titleB = b.title ? String(b.title).trim() : '';
+
+                console.log(`비교: "${titleA}" vs "${titleB}"`);
+
+                if (titleA < titleB) return -1;
+                if (titleA > titleB) return 1;
+                return 0;
+            });
+
+        default:
+            return sortedTodos;
     }
 }
 
@@ -732,7 +786,9 @@ function handleMainSearch(event) {
 
 function handleSortChange() {
     currentSort = document.getElementById('sortSelect').value;
-    loadCurrentView();
+    if (currentView !== 'calendar') {
+        loadCurrentView();
+    }
 }
 
 function loadCurrentView() {
@@ -757,6 +813,24 @@ function loadCurrentView() {
             break;
         default:
             showAllTodos();
+    }
+}
+
+function updateSortIndicator() {
+    const sortSelect = document.getElementById('sortSelect');
+    const contentTitle = document.getElementById('contentTitle');
+
+    // 현재 정렬 방식을 제목 옆에 표시 (선택사항)
+    const sortText = {
+        'dueDate': '(마감일순)',
+        'created': '(생성일순)',
+        'priority': '(우선순위순)',
+        'title': '(제목순)'
+    };
+
+    // 정렬 select 값 동기화
+    if (sortSelect.value !== currentSort) {
+        sortSelect.value = currentSort;
     }
 }
 
