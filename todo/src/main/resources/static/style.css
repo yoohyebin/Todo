@@ -700,3 +700,218 @@ body {
     font-size: 12px;
     margin-top: 4px;
 }
+
+/* ========== Tag ========== */
+.tag-add-section {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.tag-add-section h4,
+.tag-list-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #202020;
+    margin-bottom: 16px;
+}
+
+.color-picker-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.color-presets {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.color-preset {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.color-preset:hover {
+    transform: scale(1.1);
+    border-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.tag-manager-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.tag-manager-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.tag-manager-item:hover {
+    border-color: #4285f4;
+    box-shadow: 0 2px 4px rgba(66, 133, 244, 0.1);
+}
+
+.tag-manager-item.editing {
+    border-color: #34a853;
+    background: #f8fff8;
+}
+
+/* 기본 정보 표시 */
+.tag-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.tag-color-display {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tag-name-display {
+    font-weight: 500;
+    color: #202020;
+}
+
+.tag-stats {
+    font-size: 12px;
+    color: #5f6368;
+    margin-left: auto;
+    margin-right: 12px;
+}
+
+/* 수정 모드에서 기본 정보 숨기기 */
+.tag-manager-item.editing .tag-info {
+    display: none !important;
+}
+
+/* 수정 폼 스타일 */
+.tag-edit-form {
+    display: none;
+    width: 100%;
+    gap: 12px;
+    align-items: center;
+}
+
+.tag-edit-form.active {
+    display: flex;
+}
+
+.tag-edit-input {
+    padding: 8px 12px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    font-size: 14px;
+    flex: 1;
+    max-width: 200px;
+}
+
+.tag-edit-color {
+    width: 36px;
+    height: 36px;
+    border: 2px solid #dadce0;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.tag-edit-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.tag-save-btn, .tag-cancel-btn {
+    padding: 6px 14px;
+    border: 1px solid;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 50px;
+    transition: all 0.2s ease;
+}
+
+.tag-save-btn {
+    background: #34a853;
+    border-color: #34a853;
+    color: white;
+}
+
+.tag-save-btn:hover {
+    background: #2d8f47;
+    border-color: #2d8f47;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(52, 168, 83, 0.2);
+}
+
+.tag-cancel-btn {
+    background: white;
+    border-color: #dadce0;
+    color: #5f6368;
+}
+
+.tag-cancel-btn:hover {
+    background: #f8f9fa;
+    border-color: #5f6368;
+    color: #202020;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(95, 99, 104, 0.1);
+}
+
+/* 액션 버튼 스타일 */
+.tag-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.tag-action-btn {
+    padding: 8px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: #5f6368;
+    transition: all 0.2s ease;
+    min-width: 60px;
+    white-space: nowrap;
+}
+
+.tag-action-btn:hover {
+    background: #f8f9fa;
+    border-color: #4285f4;
+    color: #4285f4;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(66, 133, 244, 0.1);
+}
+
+.tag-action-btn.delete:hover {
+    border-color: #ea4335;
+    color: #ea4335;
+    background: #fce8e6;
+    box-shadow: 0 2px 4px rgba(234, 67, 53, 0.1);
+}
+
+.empty-tags {
+    text-align: center;
+    padding: 40px;
+    color: #9aa0a6;
+}

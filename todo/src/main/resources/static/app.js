@@ -495,8 +495,228 @@ async function saveTodo() {
 
 // ===== 태그 관리 =====
 function openTagManager() {
-    alert('태그 관리 기능은 준비 중입니다.');
-    // TODO: 태그 관리 모달 구현
+    document.getElementById('tagManagerModal').classList.add('active');
+    clearTagForm();
+    renderTagManagerList();
+}
+
+function closeTagManagerModal(event) {
+    if (event && event.target !== event.currentTarget) {
+        return;
+    }
+    document.getElementById('tagManagerModal').classList.remove('active');
+}
+
+function clearTagForm() {
+    document.getElementById('newTagName').value = '';
+    document.getElementById('newTagColor').value = '#6c757d';
+}
+
+function setTagColor(color) {
+    document.getElementById('newTagColor').value = color;
+}
+
+async function renderTagManagerList() {
+    const tagManagerList = document.getElementById('tagManagerList');
+
+    if (allTags.length === 0) {
+        tagManagerList.innerHTML = `
+            <div class="empty-tags">
+                <p>아직 생성된 태그가 없습니다.</p>
+            </div>
+        `;
+        return;
+    }
+
+    tagManagerList.innerHTML = '';
+
+    for (const tag of allTags) {
+        // 태그별 할일 개수 가져오기
+        let todoCount = 0;
+        try {
+            const response = await apiCall(`/tags/${tag.id}/stats`);
+            const stats = response.data || response;
+            todoCount = stats.totalTodos || 0;
+        } catch (error) {
+            console.error('태그 통계 로드 실패:', error);
+        }
+
+        const tagItem = document.createElement('div');
+        tagItem.className = 'tag-manager-item';
+        tagItem.dataset.tagId = tag.id;
+
+        tagItem.innerHTML = `
+            <div class="tag-info">
+                <div class="tag-color-display" style="background-color: ${tag.color}"></div>
+                <div class="tag-name-display">${escapeHtml(tag.name)}</div>
+                <div class="tag-stats">${todoCount}개 할일</div>
+            </div>
+            
+            <div class="tag-edit-form" id="editForm_${tag.id}">
+                <input type="text" class="tag-edit-input" value="${escapeHtml(tag.name)}" maxlength="30">
+                <input type="color" class="tag-edit-color" value="${tag.color}">
+                <div class="tag-edit-actions">
+                    <button class="tag-save-btn" onclick="saveTagEdit(${tag.id})">저장</button>
+                    <button class="tag-cancel-btn" onclick="cancelTagEdit(${tag.id})">취소</button>
+                </div>
+            </div>
+            
+            <div class="tag-actions" id="actions_${tag.id}">
+                <button class="tag-action-btn" onclick="editTag(${tag.id})">수정</button>
+                <button class="tag-action-btn delete" onclick="deleteTag(${tag.id})">삭제</button>
+            </div>
+        `;
+
+        tagManagerList.appendChild(tagItem);
+    }
+}
+
+async function addNewTag() {
+    const name = document.getElementById('newTagName').value.trim();
+    const color = document.getElementById('newTagColor').value;
+
+    if (!name) {
+        alert('태그명을 입력해주세요.');
+        return;
+    }
+
+    if (name.length > 30) {
+        alert('태그명은 30자 이하로 입력해주세요.');
+        return;
+    }
+
+    const tagData = {
+        name: name,
+        color: color
+    };
+
+    try {
+        const response = await apiCall('/tags', {
+            method: 'POST',
+            body: JSON.stringify(tagData)
+        });
+
+        if (response.success === false) {
+            alert(response.message || '태그 추가에 실패했습니다.');
+            return;
+        }
+
+        clearTagForm();
+        await loadTags(); // 전체 태그 목록 새로고침
+        renderTagManagerList();
+        showSuccess('태그가 성공적으로 추가되었습니다!');
+    } catch (error) {
+        console.error('태그 추가 실패:', error);
+        showError('태그 추가에 실패했습니다.');
+    }
+}
+
+function editTag(tagId) {
+    const tagItem = document.querySelector(`.tag-manager-item[data-tag-id="${tagId}"]`);
+    const editForm = document.getElementById(`editForm_${tagId}`);
+    const actions = document.getElementById(`actions_${tagId}`);
+
+    tagItem.classList.add('editing');
+    editForm.classList.add('active');
+    actions.style.display = 'none';
+
+    const nameInput = editForm.querySelector('.tag-edit-input');
+    nameInput.focus();
+    nameInput.select();
+}
+
+function cancelTagEdit(tagId) {
+    const tagItem = document.querySelector(`.tag-manager-item[data-tag-id="${tagId}"]`);
+    const editForm = document.getElementById(`editForm_${tagId}`);
+    const actions = document.getElementById(`actions_${tagId}`);
+
+    tagItem.classList.remove('editing');
+    editForm.classList.remove('active');
+    actions.style.display = 'flex';
+
+    // 원래 값으로 복원
+    const tag = allTags.find(t => t.id == tagId);
+    if (tag) {
+        editForm.querySelector('.tag-edit-input').value = tag.name;
+        editForm.querySelector('.tag-edit-color').value = tag.color;
+    }
+}
+
+async function saveTagEdit(tagId) {
+    const editForm = document.getElementById(`editForm_${tagId}`);
+    const name = editForm.querySelector('.tag-edit-input').value.trim();
+    const color = editForm.querySelector('.tag-edit-color').value;
+
+    if (!name) {
+        alert('태그명을 입력해주세요.');
+        return;
+    }
+
+    if (name.length > 30) {
+        alert('태그명은 30자 이하로 입력해주세요.');
+        return;
+    }
+
+    const tagData = {
+        name: name,
+        color: color
+    };
+
+    try {
+        const response = await apiCall(`/tags/${tagId}`, {
+            method: 'PUT',
+            body: JSON.stringify(tagData)
+        });
+
+        if (response.success === false) {
+            alert(response.message || '태그 수정에 실패했습니다.');
+            return;
+        }
+
+        await loadTags(); // 전체 태그 목록 새로고침
+        renderTagManagerList();
+        showSuccess('태그가 성공적으로 수정되었습니다!');
+    } catch (error) {
+        console.error('태그 수정 실패:', error);
+        showError('태그 수정에 실패했습니다.');
+    }
+}
+
+async function deleteTag(tagId) {
+    const tag = allTags.find(t => t.id == tagId);
+    if (!tag) {
+        showError('태그를 찾을 수 없습니다.');
+        return;
+    }
+
+    const confirmMessage = `"${tag.name}" 태그를 정말로 삭제하시겠습니까?\n\n이 태그를 사용하는 할일이 있다면 삭제할 수 없습니다.`;
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    try {
+        const response = await apiCall(`/tags/${tagId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.success === false) {
+            if (response.errorCode === 'TAG_IN_USE') {
+                alert(`이 태그를 사용하는 할일이 ${response.todoCount}개 있어 삭제할 수 없습니다.\n먼저 해당 할일들의 태그를 변경해주세요.`);
+            } else {
+                alert(response.message || '태그 삭제에 실패했습니다.');
+            }
+            return;
+        }
+
+        await loadTags(); // 전체 태그 목록 새로고침
+        renderTagManagerList();
+        loadCurrentView(); // 현재 보기도 새로고침 (태그 필터 중이었다면)
+        showSuccess('태그가 성공적으로 삭제되었습니다!');
+    } catch (error) {
+        console.error('태그 삭제 실패:', error);
+        showError('태그 삭제에 실패했습니다.');
+    }
 }
 
 // ===== 할일 수정 (기본 구현) =====
@@ -614,6 +834,7 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeAddTodoModal();
         closeEditTodoModal();
+        closeTagManagerModal();
     }
 });
 
@@ -628,4 +849,12 @@ document.getElementById('editTodoModal').addEventListener('click', function(even
     if (event.target === this) {
         closeEditTodoModal();
     }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('tagManagerModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeTagManagerModal();
+        }
+    });
 });

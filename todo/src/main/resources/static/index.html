@@ -197,6 +197,54 @@
   </div>
 </div>
 
+<!-- 태그 관리 모달 -->
+<div class="todo-modal" id="tagManagerModal" onclick="closeTagManagerModal(event)">
+  <div class="todo-modal-content" onclick="event.stopPropagation()">
+    <div class="todo-modal-header">
+      <div class="todo-modal-title">태그 관리</div>
+      <button class="todo-modal-close" onclick="closeTagManagerModal()">&times;</button>
+    </div>
+
+    <div class="todo-modal-body">
+      <!-- 새 태그 추가 섹션 -->
+      <div class="tag-add-section">
+        <h4>새 태그 추가</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newTagName">태그명</label>
+            <input type="text" id="newTagName" placeholder="태그명을 입력하세요" maxlength="30">
+          </div>
+          <div class="form-group">
+            <label for="newTagColor">색상</label>
+            <div class="color-picker-wrapper">
+              <input type="color" id="newTagColor" value="#6c757d">
+              <div class="color-presets">
+                <div class="color-preset" style="background: #FF6B6B" onclick="setTagColor('#FF6B6B')"></div>
+                <div class="color-preset" style="background: #4ECDC4" onclick="setTagColor('#4ECDC4')"></div>
+                <div class="color-preset" style="background: #45B7D1" onclick="setTagColor('#45B7D1')"></div>
+                <div class="color-preset" style="background: #96CEB4" onclick="setTagColor('#96CEB4')"></div>
+                <div class="color-preset" style="background: #FFEAA7" onclick="setTagColor('#FFEAA7')"></div>
+                <div class="color-preset" style="background: #DDA0DD" onclick="setTagColor('#DDA0DD')"></div>
+                <div class="color-preset" style="background: #98D8C8" onclick="setTagColor('#98D8C8')"></div>
+                <div class="color-preset" style="background: #F7DC6F" onclick="setTagColor('#F7DC6F')"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addNewTag()">태그 추가</button>
+      </div>
+
+      <!-- 기존 태그 목록 섹션 -->
+      <div class="tag-list-section">
+        <h4>기존 태그</h4>
+        <div class="tag-manager-list" id="tagManagerList">
+          <!-- 태그 목록이 동적으로 생성됩니다 -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>
