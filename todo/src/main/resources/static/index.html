@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- 메인 헤더 -->
+<header class="main-header">
+  <div class="logo">Todo</div>
+  <div class="main-search">
+    <div class="search-icon">🔍</div>
+    <input type="text" id="mainSearchInput" placeholder="할 일 검색" onkeyup="handleMainSearch(event)">
+  </div>
+</header>
+
+<!-- 메인 레이아웃 -->
+<div class="main-layout">
+  <!-- 사이드바 -->
+  <aside class="sidebar">
+    <button class="add-todo-btn" onclick="openAddTodoModal()">
+      <span>✨</span>
+      새 할일 추가
+    </button>
+
+    <!-- 보기 섹션 -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">보기</div>
+      <ul class="sidebar-menu">
+        <li>
+          <a href="#" onclick="showAllTodos()" class="active" data-view="all">
+            <div class="icon">📋</div>
+            모든 할 일
+          </a>
+        </li>
+        <li>
+          <a href="#" onclick="showCalendar()" data-view="calendar">
+            <div class="icon">📅</div>
+            달력 보기
+          </a>
+        </li>
+        <li>
+          <a href="#" onclick="showPendingTodos()" data-view="pending">
+            <div class="icon">⏰</div>
+            예정된 일
+          </a>
+        </li>
+        <li>
+          <a href="#" onclick="showCompletedTodos()" data-view="completed">
+            <div class="icon">✅</div>
+            완료된 일
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- 태그 섹션 -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">태그</div>
+      <ul class="tag-list" id="sidebarTagList">
+        <!-- 태그 목록이 동적으로 생성됩니다 -->
+      </ul>
+      <a href="#" class="tag-link tag-manage-link" onclick="openTagManager()">
+        🏷️ 태그 관리
+      </a>
+    </div>
+  </aside>
+
+  <!-- 메인 컨텐츠 -->
+  <main class="main-content">
+    <div class="content-header">
+      <h1 class="content-title" id="contentTitle">모든 할 일</h1>
+      <div class="content-controls">
+        <select class="sort-select" id="sortSelect" onchange="handleSortChange()">
+          <option value="dueDate">마감일순</option>
+          <option value="created">생성일순</option>
+          <option value="priority">우선순위순</option>
+          <option value="title">제목순</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 컨텐츠 영역 -->
+    <div id="mainContentArea">
+      <!-- 할일 목록이나 달력이 여기에 표시됩니다 -->
+    </div>
+  </main>
+</div>
+
+<!-- 할일 추가 모달 -->
+<div class="todo-modal" id="addTodoModal" onclick="closeAddTodoModal(event)">
+  <div class="todo-modal-content" onclick="event.stopPropagation()">
+    <div class="todo-modal-header">
+      <div class="todo-modal-title">새 할일 추가</div>
+      <button class="todo-modal-close" onclick="closeAddTodoModal()">&times;</button>
+    </div>
+
+    <div class="todo-modal-body">
+      <div class="form-group">
+        <label for="todoTitle">제목</label>
+        <input type="text" id="todoTitle" placeholder="할 일 제목을 입력하세요" required>
+      </div>
+
+      <div class="form-group">
+        <label for="todoDescription">설명</label>
+        <textarea id="todoDescription" placeholder="할 일 설명을 입력하세요 (선택사항)"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="todoDate">날짜</label>
+          <input type="date" id="todoDate" required>
+        </div>
+        <div class="form-group">
+          <label for="todoTime">시간</label>
+          <input type="time" id="todoTime" value="09:00">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="todoPriority">우선순위</label>
+        <select id="todoPriority">
+          <option value="LOW">낮음</option>
+          <option value="MEDIUM" selected>중간</option>
+          <option value="HIGH">높음</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>태그 선택</label>
+        <div class="tag-selector" id="modalTagSelector">
+          <!-- 태그 목록이 동적으로 생성됩니다 -->
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeAddTodoModal()">취소</button>
+        <button class="btn btn-primary" onclick="saveTodo()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
