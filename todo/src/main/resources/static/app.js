@@ -6,6 +6,8 @@ let currentTagId = null;
 let allTodos = [];
 let allTags = [];
 let editingTodoId = null;
+let currentCalendarDate = new Date();
+let currentDetailTodoId = null;
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -31,7 +33,13 @@ async function apiCall(url, options = {}) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        return await response.json();
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return await response.json();
+        } else {
+            // JSON이 아닌 응답이거나 body가 없는 경우 (DELETE 등)
+            return { success: true };
+        }
     } catch (error) {
         console.error('API Error:', error);
         throw error;
@@ -217,7 +225,7 @@ function createTodoCard(todo) {
         
         <div class="todo-actions">
             <button class="action-btn" onclick="editTodo(${todo.id})">수정</button>
-            <button class="action-btn delete" onclick="deleteTodo(${todo.id})">삭제</button>
+            <button class="action-btn delete" onclick="(${todo.id})">삭제</button>
         </div>
     `;
 
@@ -254,17 +262,39 @@ async function toggleTodoStatus(todoId, currentStatus) {
 }
 
 // ===== 할일 삭제 =====
-async function deleteTodo(todoId) {
+async function deleteTodo(todoId) {deleteTodo
     if (!confirm('정말로 이 할일을 삭제하시겠습니까?')) {
         return;
     }
 
     try {
-        await apiCall(`/todos/${todoId}`, { method: 'DELETE' });
-        loadCurrentView();
+        const response = await apiCall(`/todos/${todoId}`, { method: 'DELETE' });
+        console.log('삭제 API 응답:', response); // 디버깅
+
+        if (currentView === 'calendar' || currentView === 'day') {
+            await refreshTodosData();
+            showCalendar();
+        } else {
+            // 다른 뷰인 경우
+            loadCurrentView();
+        }
+
+        showSuccess('할일이 성공적으로 삭제되었습니다!');
     } catch (error) {
         console.error('삭제 실패:', error);
         showError('할일 삭제에 실패했습니다.');
+    }
+}
+
+async function refreshTodosData() {
+    try {
+        const queryParams = new URLSearchParams();
+        const url = `/todos${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        const todos = await apiCall(url);
+        allTodos = Array.isArray(todos) ? todos : (todos.data || []);
+        // renderTodos() 호출하지 않음!
+    } catch (error) {
+        console.error('할일 데이터 새로고침 실패:', error);
     }
 }
 
@@ -276,20 +306,372 @@ function showAllTodos() {
     loadTodos({ sort: currentSort });
 }
 
+// ===== 달력 관련 함수들 =====
 function showCalendar() {
     currentView = 'calendar';
     updateActiveMenu('calendar');
     document.getElementById('contentTitle').textContent = '달력 보기';
+    renderCalendar();
+}
 
+// 달력 렌더링
+function renderCalendar() {
     const mainContentArea = document.getElementById('mainContentArea');
+
     mainContentArea.innerHTML = `
         <div class="calendar-container">
-            <div style="padding: 40px; text-align: center; color: #9aa0a6;">
-                <h3>달력 기능 준비 중</h3>
-                <p>곧 달력 보기 기능이 제공될 예정입니다.</p>
+            <div class="calendar-header">
+                <button class="calendar-nav-btn" onclick="changeCalendarMonth(-1)">‹</button>
+                <h2 class="calendar-month-year" id="calendarMonthYear"></h2>
+                <button class="calendar-nav-btn" onclick="changeCalendarMonth(1)">›</button>
+            </div>
+            <div class="calendar-weekdays">
+                <div class="calendar-weekday">일</div>
+                <div class="calendar-weekday">월</div>
+                <div class="calendar-weekday">화</div>
+                <div class="calendar-weekday">수</div>
+                <div class="calendar-weekday">목</div>
+                <div class="calendar-weekday">금</div>
+                <div class="calendar-weekday">토</div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid">
+                <!-- 달력 날짜들이 여기에 생성됩니다 -->
             </div>
         </div>
     `;
+
+    updateCalendarDisplay();
+}
+
+// 달력 표시 업데이트
+async function updateCalendarDisplay() {
+    const monthYearElement = document.getElementById('calendarMonthYear');
+    const calendarGrid = document.getElementById('calendarGrid');
+
+    if (!monthYearElement || !calendarGrid) return;
+
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+
+    // 월/년 표시
+    monthYearElement.textContent = `${year}년 ${month + 1}월`;
+
+    // 달력 그리드 생성
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0); // 이달의 마지막 날
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    const endDate = new Date(lastDay);
+    const remainingDays = 6 - lastDay.getDay(); // 마지막 날 이후 남은 요일 수
+    endDate.setDate(endDate.getDate() + remainingDays);
+
+    calendarGrid.innerHTML = '';
+
+    // 해당 월의 할일들 가져오기
+    let monthTodos = [];
+    try {
+        monthTodos = await getMonthTodos(year, month);
+    } catch (error) {
+        console.error('월 할일 로딩 실패:', error);
+        monthTodos = [];
+    }
+
+    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    for (let i = 0; i < totalDays; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+
+        const dayElement = createCalendarDay(date, month, monthTodos);
+        calendarGrid.appendChild(dayElement);
+    }
+}
+
+// 달력 날짜 셀 생성
+function createCalendarDay(date, currentMonth, monthTodos) {
+    const dayElement = document.createElement('div');
+    dayElement.className = 'calendar-day';
+
+    const isCurrentMonth = date.getMonth() === currentMonth;
+    const isToday = isDateToday(date);
+    const dayTodos = getDayTodos(date, monthTodos);
+
+    if (!isCurrentMonth) {
+        dayElement.classList.add('other-month');
+    }
+    if (isToday) {
+        dayElement.classList.add('today');
+    }
+    if (dayTodos.length > 0) {
+        dayElement.classList.add('has-todos');
+    }
+
+    // 날짜 번호 생성
+    const dayNumber = document.createElement('div');
+    dayNumber.className = 'calendar-day-number';
+    dayNumber.textContent = date.getDate();
+
+    // 할일 목록 생성
+    const todosContainer = document.createElement('div');
+    todosContainer.className = 'calendar-day-todos';
+
+    // 최대 3개의 할일만 표시
+    const displayTodos = dayTodos.slice(0, 3);
+    displayTodos.forEach(todo => {
+        const todoItem = createCalendarTodoItem(todo);
+        todosContainer.appendChild(todoItem);
+    });
+
+    // 더 많은 할일이 있으면 표시
+    if (dayTodos.length > 3) {
+        const moreItem = document.createElement('div');
+        moreItem.className = 'calendar-todo-more';
+        moreItem.textContent = `+${dayTodos.length - 3}개 더`;
+        todosContainer.appendChild(moreItem);
+    }
+
+    dayElement.appendChild(dayNumber);
+    dayElement.appendChild(todosContainer);
+
+    // 날짜 클릭 이벤트
+    dayElement.addEventListener('click', (e) => {
+        if (e.target.classList.contains('calendar-todo-item')) return;
+        showDayTodos(date);
+    });
+
+    return dayElement;
+}
+
+// 달력 할일 아이템 생성
+function createCalendarTodoItem(todo) {
+    const todoItem = document.createElement('div');
+    todoItem.className = 'calendar-todo-item';
+
+    if (todo.status === 'DONE') {
+        todoItem.classList.add('completed');
+    }
+
+    // 안전한 색상 처리
+    const safeColor = getSafeColor(todo.tagColor);
+    todoItem.style.borderLeft = `3px solid ${safeColor}`;
+
+    // 제목 길이 제한
+    const title = todo.title || '';
+    const displayTitle = title.length > 15 ? title.substring(0, 15) + '...' : title;
+    todoItem.textContent = displayTitle;
+    todoItem.title = title; // 툴팁으로 전체 제목 표시
+
+    // 클릭 이벤트
+    todoItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openTodoDetails(todo.id);
+    });
+
+    return todoItem;
+}
+
+// 안전한 색상 값 반환
+function getSafeColor(color) {
+    if (!color) return '#6c757d';
+    if (typeof color !== 'string') return '#6c757d';
+    if (!color.startsWith('#')) return '#6c757d';
+    if (color.length !== 7) return '#6c757d';
+    return color;
+}
+
+// 월의 할일들 가져오기
+async function getMonthTodos(year, month) {
+    try {
+        // 해당 월의 시작과 끝 날짜
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+        if (!allTodos) {
+            await loadTodos();
+        }
+
+        // 전체 할일 목록이 없으면 로드
+        if (!allTodos || !Array.isArray(allTodos)) {
+            return [];
+        }
+
+        // 해당 월에 속하는 할일들 필터링
+        return allTodos.filter(todo => {
+            const todoDate = new Date(todo.dueDate);
+            return todoDate >= startDate && todoDate <= endDate;
+        });
+    } catch (error) {
+        console.error('월 할일 로딩 실패:', error);
+        return [];
+    }
+}
+
+// 특정 날짜의 할일들 가져오기
+function getDayTodos(date, monthTodos) {
+    const targetDateStr = date.toISOString().split('T')[0];
+
+    return monthTodos.filter(todo => {
+        const todoDate = new Date(todo.dueDate);
+        const todoDateStr = todoDate.toISOString().split('T')[0];
+        return todoDateStr === targetDateStr;
+    });
+}
+
+// 오늘 날짜인지 확인
+function isDateToday(date) {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+}
+
+// 달력 월 변경
+function changeCalendarMonth(direction) {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+    updateCalendarDisplay();
+}
+
+// 특정 날짜의 할일들 보기
+function showDayTodos(date) {
+    const dateStr = date.toLocaleDateString('ko-KR');
+    currentView = 'day';
+    document.getElementById('contentTitle').textContent = `${dateStr} 할일`;
+
+    // 해당 날짜의 할일들 필터링
+    const targetDateStr = date.toISOString().split('T')[0];
+    const dayTodos = allTodos.filter(todo => {
+        const todoDate = new Date(todo.dueDate);
+        const todoDateStr = todoDate.toISOString().split('T')[0];
+        return todoDateStr === targetDateStr;
+    });
+
+    const mainContentArea = document.getElementById('mainContentArea');
+
+    if (dayTodos.length === 0) {
+        mainContentArea.innerHTML = `
+            <div class="empty-state">
+                <h3>${dateStr}에 할일이 없습니다</h3>
+                <p>새로운 할일을 추가해보세요!</p>
+                <button class="btn btn-primary" onclick="showCalendar()" style="margin-top: 16px;">
+                    달력으로 돌아가기
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    // 뒤로가기 버튼
+    const backButton = document.createElement('button');
+    backButton.className = 'btn btn-secondary';
+    backButton.textContent = '← 달력으로 돌아가기';
+    backButton.style.marginBottom = '20px';
+    backButton.onclick = showCalendar;
+
+    // 할일 그리드
+    const todoGrid = document.createElement('div');
+    todoGrid.className = 'todo-grid';
+
+    dayTodos.forEach(todo => {
+        const todoCard = createTodoCard(todo);
+        todoGrid.appendChild(todoCard);
+    });
+
+    mainContentArea.innerHTML = '';
+    mainContentArea.appendChild(backButton);
+    mainContentArea.appendChild(todoGrid);
+}
+
+// 할일 상세보기
+function openTodoDetails(todoId) {
+    const todo = allTodos.find(t => t.id === todoId);
+    if (!todo) {
+        alert('할일을 찾을 수 없습니다.');
+        return;
+    }
+
+    currentDetailTodoId = todoId;
+
+    // 모달 열기
+    document.getElementById('todoDetailModal').classList.add('active');
+
+    // 데이터 채우기
+    populateTodoDetail(todo);
+}
+
+// 할일 상세 데이터 채우기
+function populateTodoDetail(todo) {
+    // 제목
+    document.getElementById('detailTodoTitle').textContent = todo.title;
+
+    // 상태
+    const statusElement = document.getElementById('detailTodoStatus');
+    statusElement.textContent = todo.status === 'DONE' ? '완료' : '진행중';
+    statusElement.className = `detail-status ${todo.status === 'DONE' ? 'done' : 'todo'}`;
+
+    // 내용
+    const contentElement = document.getElementById('detailTodoContent');
+    if (todo.content && todo.content.trim()) {
+        contentElement.textContent = todo.content;
+        contentElement.classList.remove('empty');
+    } else {
+        contentElement.textContent = '내용 없음';
+        contentElement.classList.add('empty');
+    }
+
+    // 마감일
+    const dueDate = new Date(todo.dueDate);
+    const formattedDate = dueDate.toLocaleDateString('ko-KR') + ' ' +
+        dueDate.toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
+    document.getElementById('detailTodoDueDate').textContent = formattedDate;
+
+    // 우선순위
+    const priorityElement = document.getElementById('detailTodoPriority');
+    priorityElement.innerHTML = `<span class="badge priority-${todo.priority.toLowerCase()}">${getPriorityText(todo.priority)}</span>`;
+
+    // 태그
+    const tagElement = document.getElementById('detailTodoTag');
+    if (todo.tagName && todo.tagColor) {
+        tagElement.innerHTML = `<span class="detail-tag" style="background-color: ${todo.tagColor}">${escapeHtml(todo.tagName)}</span>`;
+    } else {
+        tagElement.textContent = '태그 없음';
+        tagElement.classList.add('empty');
+    }
+
+    // 생성일
+    if (todo.createdAt) {
+        const createdDate = new Date(todo.createdAt);
+        const formattedCreated = createdDate.toLocaleDateString('ko-KR') + ' ' +
+            createdDate.toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
+        document.getElementById('detailTodoCreated').textContent = formattedCreated;
+    } else {
+        document.getElementById('detailTodoCreated').textContent = '정보 없음';
+    }
+}
+
+// 상세 모달 닫기
+function closeTodoDetailModal(event) {
+    if (event && event.target !== event.currentTarget) {
+        return;
+    }
+    document.getElementById('todoDetailModal').classList.remove('active');
+    currentDetailTodoId = null;
+}
+
+// 상세 모달에서 수정하기
+function editTodoFromDetail() {
+    if (currentDetailTodoId) {
+        console.log(currentDetailTodoId);
+        const todoId = currentDetailTodoId;
+        closeTodoDetailModal();
+        editTodo(todoId);
+    }
+}
+
+// 상세 모달에서 삭제하기
+function deleteTodoFromDetail() {
+    if (currentDetailTodoId) {
+        const todoId = currentDetailTodoId;
+        closeTodoDetailModal();
+        deleteTodo(todoId);
+    }
 }
 
 function showPendingTodos() {
@@ -363,6 +745,9 @@ function loadCurrentView() {
             break;
         case 'completed':
             showCompletedTodos();
+            break;
+        case 'calendar':
+            showCalendar();
             break;
         case 'tag':
             filterByTag(currentTagId);
@@ -485,7 +870,18 @@ async function saveTodo() {
         });
 
         closeAddTodoModal();
-        loadCurrentView();
+        if (currentView === 'calendar' || currentView === 'day') {
+            // 캘린더 관련 뷰인 경우 - 데이터 새로고침 후 캘린더 업데이트
+            await refreshTodosData();
+            if (currentView === 'calendar') {
+                updateCalendarDisplay(); // 캘린더만 다시 그리기
+            } else {
+                showCalendar(); // 달력으로 돌아가기
+            }
+        } else {
+            // 다른 뷰인 경우 기존 방식
+            loadCurrentView();
+        }
         showSuccess('할일이 성공적으로 추가되었습니다!');
     } catch (error) {
         console.error('할일 저장 실패:', error);
@@ -811,7 +1207,13 @@ async function updateTodo() {
         });
 
         closeEditTodoModal();
-        loadCurrentView();
+
+        if (currentView === 'calendar' || currentView === 'day') {
+            await loadTodos();
+            showCalendar();
+        } else {
+            loadCurrentView();
+        }
         showSuccess('할일이 성공적으로 수정되었습니다!');
     } catch (error) {
         console.error('할일 수정 실패:', error);
@@ -835,6 +1237,7 @@ document.addEventListener('keydown', function(event) {
         closeAddTodoModal();
         closeEditTodoModal();
         closeTagManagerModal();
+        closeTodoDetailModal();
     }
 });
 

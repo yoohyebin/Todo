@@ -245,6 +245,52 @@
   </div>
 </div>
 
+<!-- 할일 상세보기 모달 -->
+<div class="todo-modal" id="todoDetailModal" onclick="closeTodoDetailModal(event)">
+  <div class="todo-modal-content" onclick="event.stopPropagation()">
+    <div class="todo-modal-header">
+      <div class="todo-modal-title">할일 상세</div>
+      <button class="todo-modal-close" onclick="closeTodoDetailModal()">&times;</button>
+    </div>
+
+    <div class="todo-modal-body">
+      <div class="todo-detail-content">
+        <div class="todo-detail-header">
+          <h3 id="detailTodoTitle" class="detail-title"></h3>
+          <div class="detail-status" id="detailTodoStatus"></div>
+        </div>
+
+        <div class="todo-detail-info">
+          <div class="detail-row">
+            <span class="detail-label">📝 내용:</span>
+            <span id="detailTodoContent" class="detail-value"></span>
+          </div>
+
+          <div class="detail-row">
+            <span class="detail-label">⏰ 마감일:</span>
+            <span id="detailTodoDueDate" class="detail-value"></span>
+          </div>
+
+          <div class="detail-row">
+            <span class="detail-label">🎯 우선순위:</span>
+            <span id="detailTodoPriority" class="detail-value"></span>
+          </div>
+
+          <div class="detail-row">
+            <span class="detail-label">🏷️ 태그:</span>
+            <span id="detailTodoTag" class="detail-value"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="todo-detail-actions">
+        <button class="btn btn-primary" id="detailEditBtn" onclick="editTodoFromDetail()">수정</button>
+        <button class="btn btn-danger" id="detailDeleteBtn" onclick="deleteTodoFromDetail()">삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>
